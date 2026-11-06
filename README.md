@@ -129,4 +129,8 @@ docs/                   how it works, data formats, research notes
 - Fonts Saira Condensed, IBM Plex Sans and IBM Plex Mono (SIL Open Font License), bundled in `frontend/vendor/fonts/`
 - Item text: Bungie's Destiny 1 manifest, via the [Bungie.net API](https://github.com/Bungie-net/api)
 
-Destiny is a trademark of Bungie. This is an unofficial fan project and is not affiliated with Bungie.
+## Licence
+
+The project's code is under the [MIT licence](LICENSE). Bundled libraries keep their own licences (see
+`frontend/vendor/`). Destiny is a trademark of Bungie. This is an unofficial fan project and is not affiliated with
+Bungie; no Bungie assets are included.

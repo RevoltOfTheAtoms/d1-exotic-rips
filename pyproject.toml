@@ -2,6 +2,7 @@
 name = "d1-exotic-rips"
 version = "1.0.0"
 description = "Rip Destiny 1 (PS4) exotic weapons from your own game dump and view them in the browser, rendered with the game's own shaders."
+license = "MIT"
 requires-python = ">=3.10"
 dependencies = ["numpy", "pillow"]
 
