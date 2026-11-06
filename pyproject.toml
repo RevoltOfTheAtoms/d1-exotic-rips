@@ -1,0 +1,30 @@
+[project]
+name = "d1-exotic-rips"
+version = "1.0.0"
+description = "Rip Destiny 1 (PS4) exotic weapons from your own game dump and view them in the browser, rendered with the game's own shaders."
+requires-python = ">=3.10"
+dependencies = ["numpy", "pillow"]
+
+[project.optional-dependencies]
+research = ["capstone"]  # research/eboot_xref.py (x86-64 disassembly of the game executable)
+dev = ["ruff"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["frontend/vendor", "analysis", "reference", "export*", "preview*", "dist", "docker", "cache"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E741",  # single-letter names (l, I, O) mirror the GPU/format docs
+    "B905",  # zip() without strict: inputs are equal-length by construction
+    "UP031", # %-format in a few generated strings
+]
+
+[tool.ruff.lint.per-file-ignores]
+"research/*" = ["E402"]  # scripts set sys.path before importing d1kit
+"tests/*" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["d1kit"]

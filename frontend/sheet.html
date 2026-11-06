@@ -1,0 +1,60 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Contact sheet</title>
+<style>body{margin:0;background:#0e1013;color:#ccc;font:11px monospace}canvas{display:block;width:100%}</style>
+<canvas id="out"></canvas>
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three/three.module.js",
+  "three/addons/": "./vendor/three/addons/"
+} }
+</script>
+<script type="module">
+// Local QA only: renders every exported weapon side-on into one grid image.
+import * as THREE from "three";
+const { applyD1Lighting, applyD1Glow, D1 } = await import(`./d1light.js?v=${Date.now()}`);  // no stale cached module
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+const html = await (await fetch("index.html", { cache: "reload" })).text();
+// ?from=0&n=20&cols=4 renders one page of the list
+const q = new URLSearchParams(location.search), from = +(q.get("from") || 0);
+const ALL = JSON.parse(html.match(/const WEAPONS = (\[.*?\]);\r?\n/s)[1]);
+// ?slugs=a,b,c renders just those; ?w=&h= sets the cell size
+const pick = q.get("slugs") ? q.get("slugs").split(",") : null;
+const WEAPONS = pick ? pick.map((s) => ALL.find((w) => w.slug === s)).filter(Boolean) : ALL.slice(from, from + +(q.get("n") || ALL.length));
+const W = +(q.get("w") || 300), H = +(q.get("h") || 170), COLS = +(q.get("cols") || 2), rows = Math.ceil(WEAPONS.length / COLS);
+const out = document.getElementById("out");
+out.width = W * COLS; out.height = H * rows;
+const ctx = out.getContext("2d");
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(W, H); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.65 * +(q.get("exp") || 1); D1.spec = +(q.get("spec") || 0.15); D1.env = +(q.get("env") ?? 1); D1.map = +(q.get("map") || 0); D1.diffuse = +(q.get("diff") || 1);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x5d8fab);
+scene.environment = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture;
+// same look as the viewer (template.html)
+const key = new THREE.DirectionalLight(0xfff8f0, 1.6); key.position.set(-1.5, 2.5, 3); scene.add(key);
+const rim = new THREE.DirectionalLight(0xcfe6ff, 0.6); rim.position.set(2.5, 1.5, -2); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xe4eff6, 0x55606a, 1.7));
+const cam = new THREE.PerspectiveCamera(25, W / H, 0.01, 100);
+const loader = new GLTFLoader();
+for (let i = 0; i < WEAPONS.length; i++) {
+  const w = WEAPONS[i];
+  const g = (await loader.loadAsync(`${w.slug}.glb?v=${Date.now()}`)).scene;
+  const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+  g.traverse((o) => { if (o.isMesh && o.material.userData.d1Additive) { applyD1Glow(o.material); if (q.get("glow") && o.material.userData.d1ViewLut) o.material.emissiveIntensity = +q.get("glow"); } });
+  g.traverse((o) => { if (o.isMesh && o.material.isMeshStandardMaterial && !o.material.transparent) { o.material.metalness = 1.0; o.material.envMapIntensity = 0.9; applyD1Lighting(o.material); } });
+  g.position.sub(c); scene.add(g);
+  const d = Math.max(s.x, s.y * W / H) / 2 / Math.tan(THREE.MathUtils.degToRad(12.5)) * 1.05;
+  cam.position.set(0.15 * d, 0.12 * d, d); cam.lookAt(0, 0, 0);
+  r.render(scene, cam);
+  const x = (i % COLS) * W, y = Math.floor(i / COLS) * H;
+  ctx.drawImage(r.domElement, x, y);
+  // the game's own icon for comparison (bottom-right)
+  if (w.icon) {
+    try { const im = await createImageBitmap(await (await fetch(w.icon)).blob()); const s = Math.round(H * 0.42); ctx.drawImage(im, x + W - s - 4, y + H - s - 4, s, s); } catch {}
+  }
+  ctx.fillStyle = "#cfb043"; ctx.fillText(`${from + i + 1}. ${w.name}${w.edition ? ` (${w.edition})` : ""}`, x + 6, y + 14);
+  ctx.fillStyle = "#8a93a0"; ctx.fillText(`${w.hash} · ${w.tier || "?"}`, x + 6, y + 27);
+  scene.remove(g);
+}
+document.title = "done";
+</script>

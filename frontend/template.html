@@ -1,0 +1,790 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>D1 Exotic Rips</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<style>
+/* Layout: an armory terminal. Weapon rack on the left, the gun on a lit bench in the middle with its spec card
+   beside it, deeper records in tabs underneath. Provenance is a quiet second layer: teal = disc, lavender = API. */
+:root {
+  --bg: #0b0d10;
+  --bg-2: #101318;
+  --panel: #14181e;
+  --panel-2: #191e25;
+  --line: #232a33;
+  --line-2: #2e3742;
+  --fg: #ebe8e1;
+  --fg-2: #b9bcc2;
+  --muted: #7d8590;
+  --exotic: #d4b44a;
+  --exotic-soft: rgba(212, 180, 74, .12);
+  --exotic-ink: #1b1604;
+  --disc: #4fc9b2;
+  --disc-text: #93e4d4;
+  --disc-soft: rgba(79, 201, 178, .12);
+  --api: #a996ff;
+  --api-text: #cdc4ff;
+  --api-soft: rgba(169, 150, 255, .12);
+  --display: "Saira Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --radius: 6px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.55 var(--body); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--exotic); outline-offset: 2px; }
+
+/* top bar */
+.topbar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  display: flex; align-items: center; gap: 12px 24px; flex-wrap: wrap;
+  padding-block: 12px;
+  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px));
+  background: rgba(11, 13, 16, .92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line);
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+.brand { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+.brand b { font: 700 24px/1 var(--display); letter-spacing: .03em; }
+.brand b em { font-style: normal; color: var(--exotic); }
+.brand span { font: 500 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.legend { margin-left: auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--fg-2); }
+.legend .key { display: inline-flex; align-items: center; gap: 7px; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12.5px; color: var(--fg-2); background: none; border: 0; padding: 4px 0; }
+.toggle .sw { width: 30px; height: 17px; border-radius: 9px; background: var(--line-2); position: relative; transition: background .15s; }
+.toggle .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: var(--fg); transition: transform .15s; }
+.toggle[aria-pressed="true"] .sw { background: var(--disc); }
+.toggle[aria-pressed="true"] .sw::after { transform: translateX(13px); }
+
+/* provenance marks */
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.disc { background: var(--disc); }
+.dot.api { border: 1.5px solid var(--api); background: transparent; }
+.srcs { display: inline-flex; gap: 10px; align-items: center; font: 500 10.5px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.srcs > span { display: inline-flex; align-items: center; gap: 5px; }
+body.show-src .t-disc { color: var(--disc-text); }
+body.show-src .t-api { color: var(--api-text); }
+body.show-src img.ico-api { outline: 2px solid var(--api-text); outline-offset: -2px; border-radius: 4px; }
+body:not(.show-src) .srcs, body:not(.show-src) .src-only { display: none; }
+
+/* app shell */
+.app {
+  display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 0; min-height: calc(100% - 60px);
+}
+.rack {
+  border-right: 1px solid var(--line); background: var(--bg-2);
+  padding-block: 16px 32px; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: 14px;
+  position: sticky; top: 61px; height: calc(100vh - 61px); overflow-y: auto;
+}
+.rack h3 { display: flex; align-items: center; justify-content: space-between; font: 500 10.5px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 6px 10px; }
+.rack .group { margin-bottom: 14px; }
+.rack .group > span { display: block; font: 600 12px/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 6px 6px; }
+.rack button {
+  width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer;
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius); padding: 5px 6px;
+}
+.rack button img { width: 34px; height: 34px; border-radius: 4px; flex: none; background: #000; }
+.rack button b { font: 600 15px/1.15 var(--display); letter-spacing: .03em; }
+.rack button:hover { background: var(--panel); }
+.rack button[aria-current="true"] { background: var(--exotic-soft); border-color: rgba(212, 180, 74, .45); }
+.rack button[aria-current="true"] b { color: var(--exotic); }
+.mobile-pick { display: none; }
+.search { position: relative; margin: 0 0 14px; }
+.search input { width: 100%; padding: 8px 10px 8px 30px; border-radius: var(--radius); border: 1px solid var(--line-2); background: var(--panel); color: var(--fg); font: 13px var(--body); }
+.search input::placeholder { color: var(--muted); }
+.search::before { content: ""; position: absolute; left: 10px; top: 50%; width: 9px; height: 9px; border: 1.5px solid var(--muted); border-radius: 50%; transform: translateY(-60%); }
+.search::after { content: ""; position: absolute; left: 18px; top: 58%; width: 5px; height: 1.5px; background: var(--muted); transform: rotate(45deg); }
+.search kbd { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
+.rack .empty { color: var(--muted); font-size: 12.5px; margin: 4px 6px; }
+kbd { font: 500 10.5px/1 var(--mono); padding: 3px 5px; border-radius: 3px; border: 1px solid var(--line-2); border-bottom-width: 2px; color: var(--fg-2); background: var(--panel-2); }
+.stage .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 52px; border-radius: 6px; border: 1px solid var(--line-2); background: rgba(11, 13, 16, .6); cursor: pointer; display: grid; place-items: center; opacity: .55; transition: opacity .15s; }
+.stage .nav:hover, .stage .nav:focus-visible { opacity: 1; }
+.stage .nav.prev { left: 10px; } .stage .nav.next { right: 10px; }
+.stage .nav::before { content: ""; width: 10px; height: 10px; border: solid var(--fg); border-width: 0 2px 2px 0; }
+.stage .nav.prev::before { transform: translateX(2px) rotate(135deg); } .stage .nav.next::before { transform: translateX(-2px) rotate(-45deg); }
+.stage .tools-r { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
+.icon-btn { height: 30px; padding: 0 10px; border-radius: var(--radius); border: 1px solid var(--line-2); background: rgba(11, 13, 16, .75); cursor: pointer; font: 500 12px var(--mono); color: var(--fg-2); display: inline-flex; align-items: center; gap: 6px; }
+.icon-btn:hover { color: var(--fg); border-color: var(--muted); }
+.progress { position: absolute; left: 0; right: 0; top: 0; height: 2px; background: transparent; }
+.progress i { display: block; height: 100%; width: 0; background: var(--exotic); transition: width .15s; }
+.copy { cursor: copy; border-bottom: 1px dotted var(--line-2); }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none;
+  background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 14px; font-size: 13px; transition: opacity .2s, transform .2s; z-index: 50; }
+.toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+.help { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(5, 6, 8, .7); padding: 16px; }
+.help .box { background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; padding: 22px 24px; width: min(420px, 100%); }
+.help h2 { margin: 0 0 14px; font: 700 20px/1 var(--display); letter-spacing: .04em; }
+.help dl { display: grid; grid-template-columns: auto 1fr; gap: 9px 16px; margin: 0; font-size: 13.5px; }
+.help dt { text-align: right; }
+.help dd { margin: 0; color: var(--fg-2); }
+.help .close { margin-top: 18px; width: 100%; }
+.stage:fullscreen { border-radius: 0; aspect-ratio: auto; }
+
+.main {
+  min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start;
+  padding-block: 18px 40px; padding-left: 20px; padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+.bench { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); gap: 18px; align-items: start; }
+
+/* viewer */
+.stage {
+  position: relative; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  /* D1 inspect screen backdrop: the game's own texture 80aa8380 (lossless PNG). The in-game rings are not in the
+     UI data (likely drawn by the game's inspect scene), so none are drawn here */
+  background: url("inspect_bg.png") center / cover no-repeat, #3f6680;
+  aspect-ratio: 16 / 11; max-width: 100%; min-height: 300px;
+}
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.stage .srcs { position: absolute; top: 12px; left: 14px; }
+.stage .hud { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; align-items: end; justify-content: space-between; gap: 10px; flex-wrap: wrap; pointer-events: none; }
+.status { font: 12px var(--mono); color: var(--muted); }
+.bright { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--line-2); border-radius: var(--radius); background: rgba(11, 13, 16, .8); pointer-events: auto; font: 500 12px var(--mono); color: var(--fg-2); }
+.bright input { width: 110px; accent-color: var(--exotic); cursor: pointer; }
+.bright button { border: 1px solid var(--line-2); background: transparent; color: var(--fg-2); font: 500 11px var(--mono); padding: 2px 7px; border-radius: 4px; cursor: pointer; }
+.bright button[aria-pressed="true"] { color: var(--exotic-ink); background: var(--exotic); border-color: var(--exotic); }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: var(--radius); overflow: hidden; background: rgba(11, 13, 16, .8); pointer-events: auto; }
+.seg button { border: 0; background: transparent; padding: 6px 11px; font: 500 12px var(--mono); color: var(--fg-2); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line-2); }
+.seg button[aria-pressed="true"] { color: var(--exotic-ink); background: var(--exotic); }
+
+/* spec card */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+.card-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.card-h h2 { margin: 0; font: 600 13px/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.ident { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; align-items: center; }
+.ident img { grid-row: span 2; width: 64px; height: 64px; border-radius: 6px; border: 1px solid var(--line-2); background: #000; }
+.ident h1 { margin: 0; font: 700 clamp(28px, 3vw, 38px)/1 var(--display); letter-spacing: .02em; text-wrap: balance; }
+.ident .sub { font-size: 13px; color: var(--fg-2); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pill { font: 600 10.5px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; padding: 4px 7px; border-radius: 4px; }
+.pill.tier { background: var(--exotic); color: var(--exotic-ink); }
+.flavor { margin: 14px 0 0; font-style: italic; color: var(--fg-2); font-size: 13.5px; }
+.perk-hero { margin-top: 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 14px; align-items: center;
+  padding: 12px 14px; border-radius: 8px; background: var(--exotic-soft); border: 1px solid rgba(212, 180, 74, .35); }
+.perk-hero img, .perk-hero .ring { grid-row: span 2; width: 46px; height: 46px; }
+.perk-hero b { font: 700 19px/1.15 var(--display); letter-spacing: .02em; }
+.perk-hero p { margin: 0; font-size: 13px; color: var(--fg-2); }
+.perk-hero .more { grid-column: 1 / -1; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(212, 180, 74, .25); display: grid; gap: 6px; }
+.perk-hero .more b { font-size: 15px; }
+
+.stats { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.stats li { display: grid; grid-template-columns: 118px minmax(0, 1fr) 64px; gap: 12px; align-items: center; font-size: 13px; }
+.stats .bar { height: 6px; border-radius: 3px; background: #262d36; overflow: hidden; }
+.stats .bar i { display: block; height: 100%; border-radius: 3px; background: var(--fg); }
+.stats .num-only { font: 12px var(--mono); color: var(--muted); }
+.stats .val { font: 500 13px var(--mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.stats .val small { font-size: 11px; margin-left: 3px; }
+.stats.hidden-stats .bar i { background: #6f7883; }
+.sublabel { display: flex; align-items: center; justify-content: space-between; margin: 16px 0 8px; font: 600 11px/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.note { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+
+/* tabs */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button { border: 0; background: none; cursor: pointer; padding: 10px 14px; font: 600 14px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--exotic); }
+.panel { padding-top: 16px; }
+
+/* talent grid */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 14px; align-items: start; }
+.col { display: grid; gap: 8px; }
+.col > span { font: 600 11px/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding-left: 2px; }
+.col.ex > span { color: var(--exotic); }
+.perk { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; align-items: start; padding: 10px 12px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); }
+.perk > :not(.ico) { grid-column: 2; }
+.perk .ico { grid-row: span 3; }
+.perk b { font: 600 15px/1.2 var(--display); letter-spacing: .03em; }
+.perk span.d { font-size: 12.5px; color: var(--fg-2); }
+.perk.ex { border-color: rgba(212, 180, 74, .5); background: var(--exotic-soft); }
+.perk.gone { opacity: .5; border-style: dashed; }
+.perk .tag { font: 500 10px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+.ico { width: 36px; height: 36px; display: block; flex: none; }
+.ring { display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--line-2); font: 600 14px/1 var(--display); color: var(--muted); }
+.perk .ring { width: 36px; height: 36px; }
+
+/* lore */
+.lore { max-width: 72ch; display: grid; gap: 14px; }
+.lore blockquote { margin: 0; font: italic 18px/1.5 var(--body); color: var(--fg); padding-left: 16px; border-left: 2px solid var(--exotic); }
+.lore h3 { margin: 6px 0 0; font: 600 14px/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.lore .intro { font-weight: 600; white-space: pre-line; }
+.lore .text { white-space: pre-line; color: var(--fg-2); }
+
+/* model data */
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 18px; align-items: start; }
+dl.spec { display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; margin: 0; font-size: 13px; }
+dl.spec dt { color: var(--muted); }
+dl.spec dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.parts button { width: 100%; display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: baseline; background: transparent; border: 0; border-radius: 4px; padding: 7px 8px; cursor: pointer; text-align: left; font: 13px var(--mono); font-variant-numeric: tabular-nums; }
+.parts button:hover { background: var(--panel-2); }
+.parts button[aria-pressed="true"] { background: var(--exotic-soft); color: var(--exotic); }
+.parts .m { color: var(--muted); }
+.dyes { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.dyes li { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; align-items: center; font: 13px var(--mono); }
+.dyes .m { color: var(--muted); }
+.dyes .name { overflow-wrap: anywhere; }
+.sw2 { display: flex; gap: 4px; }
+.sw2 i { width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--line-2); display: block; }
+.atlases { display: grid; gap: 14px; }
+.atlas-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.atlas-row figure { margin: 0; min-width: 0; }
+.atlas-row img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; border-radius: 4px; border: 1px solid var(--line); background: #000; }
+.atlas-row figcaption { font: 11px var(--mono); color: var(--muted); margin-top: 4px; }
+.atlas-label { font: 12px var(--mono); color: var(--muted); margin-bottom: 6px; }
+
+/* sources table */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 11px/1.2 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); background: var(--panel); }
+tr:last-child td { border-bottom: 0; }
+td.src-cell { white-space: nowrap; }
+td.src-cell span { display: inline-flex; align-items: center; gap: 6px; }
+td.why { color: var(--fg-2); }
+.explain { max-width: 75ch; color: var(--fg-2); margin: 0 0 14px; }
+
+footer { color: var(--muted); font-size: 12px; max-width: 80ch; padding-top: 8px; }
+
+@media (max-width: 1180px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .rack { display: none; }
+  .mobile-pick { display: block; }
+  .main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .topbar { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .legend { margin-left: 0; }
+  .brand span { display: none; }
+}
+@media (max-width: 640px) {
+  .stage .srcs { display: none; }
+  .stage .tools-r { gap: 4px; }
+  .icon-btn { height: 28px; padding: 0 8px; font-size: 11px; }
+  .stage .nav { width: 30px; height: 44px; }
+  .stats li { grid-template-columns: 104px minmax(0, 1fr) 56px; gap: 10px; }
+}
+.mobile-pick select { width: 100%; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--line-2); background: var(--panel); color: var(--fg); font: 600 16px var(--display); letter-spacing: .03em; }
+.note.warn { border-left: 3px solid var(--api-text); padding-left: 10px; }
+.rack button .ed { margin-left: auto; font-size: 11px; opacity: .65; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="topbar">
+  <div class="brand"><b>Exotic <em>Rips</em></b><span id="build-label">Destiny 1 · PS4</span></div>
+  <div class="legend" aria-label="Data sources">
+    <span class="key"><span class="dot disc"></span>Disc · your dump</span>
+    <span class="key"><span class="dot api"></span><span id="manifest-label">API · Bungie manifest</span></span>
+    <button class="toggle" id="src-toggle" aria-pressed="true"><span class="sw"></span>Show sources</button>
+    <button class="icon-btn" id="help-btn" aria-label="Keyboard shortcuts"><kbd>?</kbd>Shortcuts</button>
+  </div>
+</header>
+
+<div class="app">
+  <nav class="rack" id="rack" aria-label="Weapons">
+    <h3>Exotics <span class="srcs"><span><span class="dot disc"></span>icons</span><span><span class="dot api"></span>names</span></span></h3>
+    <div class="search"><input id="search" type="search" placeholder="Search weapons or perks" aria-label="Search weapons or perks" autocomplete="off"><kbd>/</kbd></div>
+    <div id="rack-list"></div>
+    <p class="empty" id="rack-empty" hidden>No weapon matches.</p>
+  </nav>
+
+  <main class="main">
+    <div class="mobile-pick"><label for="w-select" class="sublabel" style="margin-top:0">Weapon</label><select id="w-select"></select></div>
+
+    <div class="bench">
+      <div class="stage" id="stage">
+        <div class="progress" aria-hidden="true"><i id="progress"></i></div>
+        <span class="srcs"><span><span class="dot disc"></span>model · textures · dyes</span></span>
+        <div class="tools-r">
+          <button class="icon-btn" id="b-reset" title="Reset view (R)">Reset</button>
+          <button class="icon-btn" id="b-shot" title="Save a PNG of the view (P)">Screenshot</button>
+          <button class="icon-btn" id="b-full" title="Fullscreen (F)">Fullscreen</button>
+        </div>
+        <button class="nav prev" id="b-prev" aria-label="Previous weapon (←)" title="Previous weapon (←)"></button>
+        <button class="nav next" id="b-next" aria-label="Next weapon (→)" title="Next weapon (→)"></button>
+        <div class="hud">
+          <span class="status" id="status">Loading…</span>
+          <label class="bright" title="Brightness (double-click to reset)"><span>Light</span>
+            <input type="range" id="brightness" min="0.3" max="3" step="0.05" value="1" aria-label="Brightness">
+            <button id="b-ingame" type="button" title="Inspect-screen lighting as in the game (calibrated to in-game screenshots)">In-game</button></label>
+          <span class="seg" role="group" aria-label="View">
+            <button id="t-tex" aria-pressed="true">Textured</button>
+            <button id="t-wire" aria-pressed="false">Wire</button>
+            <button id="t-spin" aria-pressed="true">Spin</button>
+          </span>
+        </div>
+      </div>
+
+      <section class="card" aria-label="Weapon summary">
+        <div class="ident">
+          <img id="w-icon" alt="">
+          <h1 id="w-name" class="t-api">Weapon</h1>
+          <div class="sub"><span class="pill tier t-disc" id="w-tier">Exotic</span><span class="pill t-api" id="w-ed" hidden></span><span id="w-type" class="t-api"></span></div>
+        </div>
+        <p class="flavor t-api" id="w-flavor"></p>
+        <p class="note warn t-disc" id="w-note" hidden></p>
+        <div id="perk-hero"></div>
+
+        <div class="sublabel">Stats <span class="srcs"><span><span class="dot disc"></span>values</span><span><span class="dot api"></span>names</span></span></div>
+        <ul class="stats" id="stats"></ul>
+        <div class="sublabel">Hidden stats</div>
+        <ul class="stats hidden-stats" id="hidden"></ul>
+        <p class="note" id="stat-note"></p>
+      </section>
+    </div>
+
+    <div>
+      <div class="tabs" role="tablist" aria-label="Weapon records">
+        <button role="tab" id="tab-perks" aria-selected="true" aria-controls="p-perks">Talent grid</button>
+        <button role="tab" id="tab-lore" aria-selected="false" aria-controls="p-lore">Lore</button>
+        <button role="tab" id="tab-model" aria-selected="false" aria-controls="p-model">Model data</button>
+        <button role="tab" id="tab-sources" aria-selected="false" aria-controls="p-sources">Sources</button>
+      </div>
+
+      <section class="panel" id="p-perks" role="tabpanel" aria-labelledby="tab-perks">
+        <div class="card-h"><span class="srcs"><span><span class="dot api"></span>perks &amp; layout</span><span><span class="dot disc"></span>icons · <span class="ver"></span> check</span><span><span class="dot api"></span>outlined icons</span></span></div>
+        <div class="grid" id="grid"></div>
+        <p class="note" id="perk-note"></p>
+      </section>
+
+      <section class="panel" id="p-lore" role="tabpanel" aria-labelledby="tab-lore" hidden>
+        <div class="card-h"><span class="srcs"><span><span class="dot api"></span>all lore text</span></span></div>
+        <div class="lore" id="lore"></div>
+      </section>
+
+      <section class="panel" id="p-model" role="tabpanel" aria-labelledby="tab-model" hidden>
+        <div class="split">
+          <div class="card">
+            <div class="card-h"><h2>Asset</h2><span class="srcs"><span><span class="dot disc"></span>disc</span></span></div>
+            <dl class="spec" id="spec"></dl>
+          </div>
+          <div class="card">
+            <div class="card-h"><h2>Gear parts</h2><span class="srcs"><span><span class="dot disc"></span>disc</span></span></div>
+            <ul class="parts" id="parts"></ul>
+            <p class="note">Select a part to isolate it in the viewer.</p>
+          </div>
+          <div class="card">
+            <div class="card-h"><h2>Locked dyes</h2><span class="srcs"><span><span class="dot disc"></span>disc</span></span></div>
+            <ul class="dyes" id="dyes"></ul>
+            <p class="note">Slot 0's primary colour is baked into the plated parts with the blend from Bungie's D1 web gear viewer.</p>
+          </div>
+          <div class="card">
+            <div class="card-h"><h2>Plate atlases</h2><span class="srcs"><span><span class="dot disc"></span>disc</span></span></div>
+            <div class="atlases" id="maps"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="p-sources" role="tabpanel" aria-labelledby="tab-sources" hidden>
+        <p class="explain">The disc carries every model, texture, stat number and icon, but no display text: Destiny 1 downloads a
+          content manifest from Bungie at sign-in, and names, descriptions and lore come from that. This viewer uses
+          <span id="manifest-desc">an archived copy of that manifest</span> for text only.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Data</th><th>Source</th><th>Why</th></tr></thead>
+          <tbody id="src-table"></tbody>
+        </table></div>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div class="help" id="help" hidden>
+      <div class="box" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <h2 id="help-title">Shortcuts</h2>
+        <dl>
+          <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous / next weapon</dd>
+          <dt><kbd>/</kbd></dt><dd>Search weapons or perks</dd>
+          <dt><kbd>T</kbd></dt><dd>Toggle textures</dd>
+          <dt><kbd>W</kbd></dt><dd>Toggle wireframe</dd>
+          <dt><kbd>Space</kbd></dt><dd>Start or stop spinning</dd>
+          <dt><kbd>R</kbd></dt><dd>Reset the camera</dd>
+          <dt><kbd>F</kbd></dt><dd>Fullscreen viewer</dd>
+          <dt><kbd>P</kbd></dt><dd>Save a screenshot</dd>
+          <dt><kbd>S</kbd></dt><dd>Show or hide data sources</dd>
+          <dt><kbd>1</kbd>–<kbd>4</kbd></dt><dd>Talent grid · Lore · Model data · Sources</dd>
+          <dt><kbd>Esc</kbd></dt><dd>Close this, clear search or the part filter</dd>
+        </dl>
+        <button class="icon-btn close" id="help-close">Close</button>
+      </div>
+    </div>
+
+    <footer>Ripped from your own disc dump with a custom Tiger package reader. Geometry is the highest LOD of each gear part;
+      textures are the plate atlases the game composites at runtime.</footer>
+  </main>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three/three.module.js",
+  "three/addons/": "./vendor/three/addons/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { applyD1Lighting, applyD1Glow, D1 } from "./d1light.js";
+D1.spec = 0.15;  // game BRDF specular, calibrated against the icons (the combine pass that scales it is not decoded)
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const WEAPONS = /*__WEAPONS__*/[];
+const BUILD = /*__BUILD__*/{};
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => n.toLocaleString("en-US");
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+// ---- provenance toggle (remembered per viewer)
+const srcBtn = $("src-toggle");
+function setSources(on) {
+  document.body.classList.toggle("show-src", on);
+  srcBtn.setAttribute("aria-pressed", String(on));
+  try { localStorage.setItem("d1rips.sources", on ? "1" : "0"); } catch {}
+}
+let srcPref = true;
+try { srcPref = localStorage.getItem("d1rips.sources") !== "0"; } catch {}
+setSources(srcPref);
+srcBtn.onclick = () => setSources(!document.body.classList.contains("show-src"));
+
+// ---- 3D
+const stage = $("stage");
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.65;  // calibrated against the game icons with the game BRDF lighting active
+stage.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+// Lights live in camera space so the lighting stays fixed on screen while the model is orbited.
+// Studio look modelled on Bungie's D1 web gear viewer (about 60% ambient, 40% direct, a little shine):
+// soft sky/ground fill, a warm key from upper right, a cool rim from behind.
+// D1 inspect screen: soft, bright, mostly frontal light with a cool sky fill and low contrast
+const key = new THREE.DirectionalLight(0xfff8f0, 1.6); key.position.set(-1.5, 2.5, 3);
+const rim = new THREE.DirectionalLight(0xcfe6ff, 0.6); rim.position.set(2.5, 1.5, -2);
+const fill = new THREE.HemisphereLight(0xe4eff6, 0x55606a, 1.7);
+const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
+camera.add(key, rim, fill);
+scene.add(camera);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.8;
+renderer.domElement.addEventListener("pointerdown", () => { controls.autoRotate = false; setPressed("t-spin", false); });
+// Brightness: scales exposure (all lights + reflections together); remembered per browser
+const BASE_EXPOSURE = renderer.toneMappingExposure;
+const bright = $("brightness");
+// 1.0 = the inspect-screen calibration (backdrop, lights and exposure matched to in-game screenshots)
+const IN_GAME = 1.0;
+const setBright = v => {
+  bright.value = v; renderer.toneMappingExposure = BASE_EXPOSURE * v;
+  $("b-ingame").setAttribute("aria-pressed", String(Math.abs(v - IN_GAME) < 0.001));
+  try { localStorage.setItem("d1-brightness", v); } catch (e) {}
+};
+setBright(IN_GAME);
+$("b-ingame").addEventListener("click", () => setBright(IN_GAME));
+try { const v = parseFloat(localStorage.getItem("d1-brightness")); if (v > 0) setBright(v); } catch (e) {}
+bright.addEventListener("input", () => setBright(parseFloat(bright.value)));
+bright.addEventListener("dblclick", () => setBright(IN_GAME));
+
+const loader = new GLTFLoader();
+const cache = new Map();
+let current = null, isolated = null, currentSlug = null;
+const state = { tex: true, wire: false };
+const LOOK = { metal: 1.0, env: 0.9 };  // metal per pixel from the gearstack (export's ORM blue)
+const clay = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.55, metalness: 0.2 });
+
+function setPressed(id, v) { $(id).setAttribute("aria-pressed", String(v)); }
+function resize() {
+  const r = stage.getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false);
+  camera.aspect = r.width / Math.max(1, r.height);
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+
+function applyMaterials() {
+  if (!current) return;
+  current.root.traverse((o) => {
+    if (!o.isMesh) return;
+    const src = state.tex ? o.userData.orig : clay;
+    const m = src.clone();
+    m.onBeforeCompile = src.onBeforeCompile;  // clone() drops the game-lighting shader hook (d1light.js)
+    m.wireframe = state.wire;
+    const dim = isolated && o.userData.part !== isolated;
+    m.transparent = dim || m.transparent; m.opacity = dim ? 0.08 : m.opacity; m.depthWrite = !dim;
+    o.material = m;
+  });
+}
+
+// ---- rack / picker
+const byType = {};
+WEAPONS.forEach((w) => (byType[w.type] ??= []).push(w));
+$("rack-list").innerHTML = Object.entries(byType).map(([t, ws]) => `<div class="group"><span class="t-api">${esc(t)}</span>${
+  ws.map((w) => `<button data-slug="${w.slug}" aria-current="false">${w.icon ? `<img src="${w.icon}" alt="">` : ""}<b class="t-api">${esc(w.name)}</b>${w.edition ? `<span class="ed t-api">${esc(w.edition)}</span>` : ""}</button>`).join("")}</div>`).join("");
+$("w-select").innerHTML = Object.entries(byType).map(([t, ws]) => `<optgroup label="${esc(t)}">${
+  ws.map((w) => `<option value="${w.slug}">${esc(w.name)}${w.edition ? ` (${esc(w.edition)})` : ""}</option>`).join("")}</optgroup>`).join("");
+document.querySelectorAll("#rack-list button").forEach((b) => b.addEventListener("click", () => select(b.dataset.slug)));
+$("w-select").addEventListener("change", (e) => select(e.target.value));
+
+const ORDER = Object.values(byType).flat();
+
+// ---- search: weapon name, type or any perk name
+function applySearch() {
+  const q = $("search").value.trim().toLowerCase();
+  let shown = 0;
+  document.querySelectorAll("#rack-list .group").forEach((g) => {
+    let any = false;
+    g.querySelectorAll("button").forEach((b) => {
+      const w = WEAPONS.find((x) => x.slug === b.dataset.slug);
+      const hay = [w.name, w.edition || "", w.type, ...w.perks.flatMap((c) => c.perks.map((p) => p.name))].join(" ").toLowerCase();
+      const hit = !q || hay.includes(q);
+      b.hidden = !hit; any ||= hit; shown += hit ? 1 : 0;
+    });
+    g.hidden = !any;
+  });
+  $("rack-empty").hidden = shown > 0;
+}
+$("search").addEventListener("input", applySearch);
+$("search").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { const first = document.querySelector("#rack-list button:not([hidden])"); if (first) { select(first.dataset.slug); first.focus(); } }
+  if (e.key === "Escape") { $("search").value = ""; applySearch(); $("search").blur(); }
+});
+
+// ---- tabs (remembered per viewer)
+const tabs = ["perks", "lore", "model", "sources"];
+function openTab(name) {
+  tabs.forEach((t) => {
+    $("tab-" + t).setAttribute("aria-selected", String(t === name));
+    $("p-" + t).hidden = t !== name;
+  });
+  try { localStorage.setItem("d1rips.tab", name); } catch {}
+}
+tabs.forEach((t) => $("tab-" + t).addEventListener("click", () => openTab(t)));
+let tabPref = "perks";
+try { tabPref = localStorage.getItem("d1rips.tab") || "perks"; } catch {}
+openTab(tabs.includes(tabPref) ? tabPref : "perks");
+
+// ---- small helpers
+let toastTimer;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 1600);
+}
+document.addEventListener("click", async (e) => {
+  const el = e.target.closest("[data-copy]");
+  if (!el) return;
+  try { await navigator.clipboard.writeText(el.dataset.copy); toast(`Copied ${el.dataset.copy}`); }
+  catch { const r = document.createRange(); r.selectNodeContents(el); getSelection().removeAllRanges(); getSelection().addRange(r); toast("Selected; press Ctrl+C to copy"); }
+});
+
+// ---- sources table (static)
+const SOURCES = BUILD.sources;
+$("build-label").textContent = BUILD.label;
+$("manifest-label").textContent = BUILD.manifest;
+$("manifest-desc").textContent = BUILD.manifestDesc;
+$("perk-note").textContent = `Faded perks aren't in the ${BUILD.ver} disc's perk list: ${BUILD.perkNote}`;
+document.querySelectorAll(".ver").forEach((e) => (e.textContent = BUILD.ver));
+const srcLabel = { disc: '<span class="dot disc"></span>Disc', api: '<span class="dot api"></span>API', web: '<span class="dot api"></span>Bungie web code' };
+$("src-table").innerHTML = SOURCES.map(([d, s, why]) => `<tr><td>${d}</td><td class="src-cell"><span>${srcLabel[s]}</span></td><td class="why">${why}</td></tr>`).join("");
+
+// ---- weapon panels
+const ring = (name, cls = "ico ring") => `<span class="${cls}" aria-hidden="true">${esc((name || "?")[0])}</span>`;
+// icons not traced on disc come from Bungie's server: outlined in the API colour when sources are shown
+const icon = (p, cls = "ico") => p.icon ? `<img class="${cls}${p.icon.startsWith("icons/disc_") ? "" : " ico-api"}" src="${p.icon}" alt=""${p.icon.startsWith("icons/disc_") ? "" : ' title="Icon from Bungie&#39;s server (not traced on disc)"'}>` : ring(p.name);
+const css = (c) => `rgb(${c.map((v) => Math.round(Math.pow(Math.min(1, Math.max(0, v)), 1 / 2.2) * 255)).join(",")})`;
+
+function render(w) {
+  // summary card
+  $("w-icon").hidden = !w.icon; if (w.icon) { $("w-icon").src = w.icon; $("w-icon").alt = `${w.name} icon`; }
+  $("w-name").textContent = w.name;
+  $("w-ed").textContent = w.edition || ""; $("w-ed").hidden = !w.edition;
+  $("w-type").textContent = w.type;
+  $("w-tier").textContent = w.tier || "Exotic";
+  $("w-flavor").textContent = w.lore.flavor || "";
+  $("w-flavor").hidden = !w.lore.flavor;
+  $("w-note").textContent = w.note || ""; $("w-note").hidden = !w.note;
+  const exotic = w.perks.flatMap((c) => c.perks.filter((p) => p.exotic));
+  $("perk-hero").innerHTML = exotic.length ? `<div class="perk-hero">${icon(exotic[0], "ico")}<b class="t-api">${esc(exotic[0].name)}</b><p class="t-api">${esc(exotic[0].description)}</p>${
+    exotic.length > 1 ? `<div class="more">${exotic.slice(1).map((p) => `<div><b class="t-api">${esc(p.name)}</b><p class="t-api">${esc(p.description)}</p></div>`).join("")}</div>` : ""}</div>` : "";
+
+  const statRow = (s) => {
+    const v = s.value ?? s.archived, max = s.max || 100;
+    const vsrc = s.value != null ? "disc" : "api";
+    const diff = s.archived != null && s.value != null && s.archived !== s.value ? `<small class="t-api src-only" title="${BUILD.manifestShort} value">${s.archived}</small>` : "";
+    const bar = s.numeric && !s.hidden ? `<span class="num-only"></span>` : `<span class="bar"><i style="width:${Math.max(0, Math.min(100, (v / max) * 100))}%"></i></span>`;
+    return `<li title="${esc(s.description)}"><span class="t-api">${esc(s.name)}</span>${bar}<span class="val"><span class="t-${vsrc}">${v ?? "–"}</span>${diff}</span></li>`;
+  };
+  $("stats").innerHTML = w.stats.filter((s) => !s.hidden).map(statRow).join("");
+  $("hidden").innerHTML = w.stats.filter((s) => s.hidden).map(statRow).join("");
+  const apiCurves = w.stats.some((s) => s.curves === "api");
+  $("stat-note").innerHTML = `Disc values are the gun's base stats before its default perks. <span class="src-only">Small lavender numbers are the ${BUILD.manifestShort} manifest values, which include those perks, where they differ. </span>${
+    apiCurves ? `<span class="t-api">This weapon's stat group isn't on the disc, so its display curves are API data.</span>` : ""}`;
+
+  // talent grid
+  const colName = (c) => c.perks.some((p) => p.exotic) ? "Exotic" : ({ 0: "Element", 1: "Sights", 2: "Intrinsic", 4: "Perks", 7: "Upgrades" })[c.column] || "Perks";
+  $("grid").innerHTML = w.perks.map((c) => {
+    const ex = c.perks.some((p) => p.exotic);
+    return `<div class="col${ex ? " ex" : ""}"><span>${colName(c)}</span>${c.perks.map((p) =>
+      `<div class="perk${p.exotic ? " ex" : ""}${p.in_v101 ? "" : " gone"}">${icon(p)}<b class="t-api">${esc(p.name)}</b><span class="d t-api">${esc(p.description)}</span>${
+        p.in_v101 ? "" : `<span class="tag t-disc">Not in ${BUILD.ver}'s perk list</span>`}</div>`).join("")}</div>`;
+  }).join("");
+
+  // lore
+  $("lore").innerHTML = (w.lore.flavor ? `<blockquote class="t-api">${esc(w.lore.flavor)}</blockquote>` : "") + w.lore.cards.map((c) =>
+    `<h3>Grimoire · ${esc(c.title)}</h3>${c.intro ? `<div class="intro t-api">${esc(c.intro)}</div>` : ""}<div class="text t-api">${esc(c.text)}</div>`).join("")
+    || `<p class="note">No lore for this weapon in the manifest.</p>`;
+
+  // model data
+  const tris = w.parts.reduce((a, p) => a + p.triangles, 0), verts = w.parts.reduce((a, p) => a + p.vertices, 0);
+  $("spec").innerHTML = [
+    ["Item hash", `<span class="copy" data-copy="${w.hash}" title="Click to copy">${w.hash}</span>`],
+    ["Gear-art index", w.gearArt], ["Gear parts", w.parts.length],
+    ["Triangles (LOD0)", fmt(tris)], ["Vertices", fmt(verts)], ["Materials · shaders", `${w.materials} · ${w.shaders}`],
+    ["GLB size", (w.glbBytes / 1048576).toFixed(1) + " MB"],
+    ["Export folder", `<span class="copy" data-copy="Workspace\\${BUILD.exportDir}\\${w.slug}" title="Click to copy">${BUILD.exportDir}\\${w.slug}</span>`],
+  ].map(([k, v]) => `<dt>${k}</dt><dd class="t-disc">${v}</dd>`).join("");
+  $("parts").innerHTML = w.parts.map((p) => `<li><button data-part="slot${p.slot}_${p.asset}" aria-pressed="false"><span class="m">slot ${p.slot}</span><span class="t-disc">${p.asset}</span><span class="m">${fmt(p.triangles)} tris</span></button></li>`).join("");
+  document.querySelectorAll("#parts button").forEach((b) => b.addEventListener("click", () => {
+    isolated = isolated === b.dataset.part ? null : b.dataset.part;
+    document.querySelectorAll("#parts button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.part === isolated)));
+    applyMaterials();
+  }));
+  $("dyes").innerHTML = w.dyes.map((d) => `<li><span class="m">slot ${d.slot}</span><span class="name t-disc">${esc(d.name)}</span><span class="sw2"><i title="primary" style="background:${css(d.primary)}"></i><i title="secondary" style="background:${css(d.secondary)}"></i></span></li>`).join("");
+  $("maps").innerHTML = w.atlases.map((a) => `<div><div class="atlas-label">Canvas ${a.canvas} · ${a.size}×${a.size}</div><div class="atlas-row">${
+    ["diffuse", "normal", "gearstack"].map((k) => `<figure><img src="${a.maps[k]}" alt="${esc(w.name)} canvas ${a.canvas} ${k}" loading="lazy"><figcaption>${k}</figcaption></figure>`).join("")}</div></div>`).join("");
+}
+
+// load a weapon's GLB once (shared by display and background preloading)
+const pending = new Map();
+function loadModel(slug, onProgress) {
+  if (cache.has(slug)) return Promise.resolve(cache.get(slug));
+  if (pending.has(slug)) return pending.get(slug);
+  const p = new Promise((resolve, reject) => loader.load(`${slug}.glb`, (gltf) => {
+    const root = gltf.scene, approx = new Set();
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      let n = o; while (n.parent && n.parent !== root) n = n.parent;
+      o.userData.part = n.name || o.name;
+      const m = o.material;
+      if (m.userData.d1Additive) applyD1Glow(m);  // game glow pass (export: glow_*): additive, view curve (swords)
+      if (m.userData.d1Approx) approx.add(m.userData.d1Approx);  // part approximated on request (export flag)
+      if (m.isMeshStandardMaterial && !m.transparent) {
+        // metalness map (ORM blue) comes from the gearstack's metal channel
+        m.metalness = LOOK.metal; m.envMapIntensity = LOOK.env;
+        applyD1Lighting(m);  // game BRDF table for texels baked by the game's own gear shaders
+      }
+      o.userData.orig = m;
+    });
+    const box = new THREE.Box3().setFromObject(root);
+    root.position.sub(box.getCenter(new THREE.Vector3()));
+    const entry = { root, radius: box.getSize(new THREE.Vector3()).length() / 2, approx: [...approx] };
+    cache.set(slug, entry); pending.delete(slug); resolve(entry);
+  }, (ev) => onProgress?.(ev.total ? ev.loaded / ev.total : 0), (e) => { pending.delete(slug); reject(e); }));
+  pending.set(slug, p);
+  return p;
+}
+
+function resetView() {
+  if (!current) return;
+  const r = current.radius;
+  camera.position.set(r * 1.4, r * 0.7, r * 2.6);
+  camera.near = r / 100; camera.far = r * 50; camera.updateProjectionMatrix();
+  controls.target.set(0, 0, 0); controls.update();
+}
+
+function neighbour(step) {
+  const i = ORDER.findIndex((w) => w.slug === currentSlug);
+  return ORDER[(i + step + ORDER.length) % ORDER.length];
+}
+
+async function select(slug) {
+  const w = WEAPONS.find((x) => x.slug === slug);
+  if (!w) return;
+  currentSlug = slug;
+  document.querySelectorAll("#rack-list button").forEach((b) => b.setAttribute("aria-current", String(b.dataset.slug === slug)));
+  document.querySelector(`#rack-list button[data-slug="${slug}"]`)?.scrollIntoView({ block: "nearest" });
+  $("w-select").value = slug;
+  if (location.hash.slice(1) !== slug) history.replaceState(null, "", "#" + slug);
+  document.title = `${w.name}${w.edition ? ` (${w.edition})` : ""} · D1 Exotic Rips`;
+  render(w);
+  isolated = null;
+  if (current) scene.remove(current.root);
+  current = null;
+  const bar = $("progress");
+  $("status").textContent = `Loading ${w.name}…`;
+  let entry;
+  try {
+    entry = await loadModel(slug, (f) => { if (currentSlug === slug) { bar.style.width = `${Math.round(f * 100)}%`; $("status").textContent = `Loading ${w.name}… ${Math.round(f * 100)}%`; } });
+  } catch (e) {
+    $("status").textContent = "Couldn't load the model. Is the local server still running?";
+    bar.style.width = "0";
+    return;
+  }
+  if (currentSlug !== slug) return;  // another weapon was picked while loading
+  bar.style.width = "0";
+  current = entry;
+  // approximation flags from the export: shown under the flavour text, after any note of the weapon's own
+  const notes = [w.note, ...(entry.approx || []).map((t) => `Approximation: ${t}.`)].filter(Boolean);
+  $("w-note").textContent = notes.join(" "); $("w-note").hidden = !notes.length;
+  scene.add(current.root);
+  resetView();
+  applyMaterials();
+  $("status").textContent = "Drag to orbit · scroll to zoom";
+  // warm the neighbours so ← / → switch instantly
+  [neighbour(1), neighbour(-1)].forEach((n) => loadModel(n.slug).catch(() => {}));
+}
+
+$("t-tex").onclick = () => { state.tex = !state.tex; setPressed("t-tex", state.tex); applyMaterials(); };
+$("t-wire").onclick = () => { state.wire = !state.wire; setPressed("t-wire", state.wire); applyMaterials(); };
+$("t-spin").onclick = () => { controls.autoRotate = !controls.autoRotate; setPressed("t-spin", controls.autoRotate); };
+$("b-prev").onclick = () => select(neighbour(-1).slug);
+$("b-next").onclick = () => select(neighbour(1).slug);
+$("b-reset").onclick = resetView;
+$("b-full").onclick = () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else stage.requestFullscreen?.().catch(() => toast("Fullscreen isn't available here"));
+};
+$("b-shot").onclick = () => {
+  renderer.render(scene, camera);
+  const a = document.createElement("a");
+  a.href = renderer.domElement.toDataURL("image/png");
+  a.download = `${currentSlug || "weapon"}.png`;
+  a.click();
+  toast(`Saved ${a.download}`);
+};
+
+// ---- shortcuts
+const help = $("help");
+const openHelp = (on) => { help.hidden = !on; if (on) $("help-close").focus(); };
+$("help-btn").onclick = () => openHelp(true);
+$("help-close").onclick = () => openHelp(false);
+help.addEventListener("click", (e) => { if (e.target === help) openHelp(false); });
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName);
+  if (e.key === "Escape") {
+    if (!help.hidden) return openHelp(false);
+    if (isolated) { isolated = null; document.querySelectorAll("#parts button").forEach((x) => x.setAttribute("aria-pressed", "false")); applyMaterials(); }
+    return;
+  }
+  if (typing) return;
+  const k = e.key.toLowerCase();
+  const act = {
+    arrowleft: () => select(neighbour(-1).slug), arrowright: () => select(neighbour(1).slug),
+    "/": () => { $("search").focus(); }, "?": () => openHelp(help.hidden),
+    t: () => $("t-tex").click(), w: () => $("t-wire").click(), " ": () => $("t-spin").click(),
+    r: resetView, f: () => $("b-full").click(), p: () => $("b-shot").click(), s: () => srcBtn.click(),
+    1: () => openTab("perks"), 2: () => openTab("lore"), 3: () => openTab("model"), 4: () => openTab("sources"),
+  }[k];
+  if (act) { e.preventDefault(); act(); }
+});
+
+resize();
+renderer.setAnimationLoop(() => {
+  controls.update();
+  scene.environmentRotation.setFromRotationMatrix(camera.matrixWorld);  // reflections turn with the view too
+  renderer.render(scene, camera);
+});
+const start = WEAPONS.find((w) => w.slug === location.hash.slice(1)) || WEAPONS.find((w) => w.slug === "gjallarhorn") || WEAPONS[0];
+select(start.slug);
+</script>

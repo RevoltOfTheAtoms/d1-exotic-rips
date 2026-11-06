@@ -1,0 +1,40 @@
+# --- Game assets and anything derived from them: never commit ---------------------------------------------------
+# Exports and built sites (models, textures, shaders ripped from the dump)
+/export/
+/export_*/
+/preview/
+/preview_*/
+/dist/
+# Images the viewer needs, ripped from the dump by `py d1rip.py setup`
+/frontend/inspect_bg.png
+/frontend/env_*.png
+# Proprietary Oodle decompressor (bring your own, see README)
+/oodle/
+*.dll
+*.so
+# Downloaded reference data (Bungie's manifest: `py d1rip.py setup` fetches it)
+/reference/
+# Research output: dumps, disassembly, notes made against game data
+/analysis/
+/logs/
+# Lookup caches (rebuilt automatically)
+/cache/
+
+# --- Secrets ------------------------------------------------------------------------------------------------------
+/.secrets/
+*.key
+.env
+
+# --- Local tooling ------------------------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.venv/
+venv/
+.vscode/
+.idea/
+/.claude/
+# Docker experiments (local testing only)
+/docker/
+/.dockerignore
+d1rip.settings.json
